@@ -249,15 +249,17 @@ services:
         volumes:
             - ./bin:/cfs/bin
             - ./conf/client.json:/cfs/conf/client.json
-            - ./script/run_test.sh:/cfs/script/start.sh
+            - ./script/run_test.sh:/cfs/script/run_test.sh
             - ./script/start_client.sh:/cfs/script/start_client.sh
             - ./ltp/runtest/fs:/opt/ltp/runtest/fs
+            - ./osstest/run_test.py:/cfs/osstest/run_test.py
+            - ./osstest/requirements.txt:/cfs/osstest/requirements.txt
         privileged: true
         devices:
             - /dev/fuse:/dev/fuse:rwm
         cap_add:
             - SYS_ADMIN
-        command: /bin/bash /cfs/script/start.sh
+        command: /bin/bash /cfs/script/run_test.sh
         networks:
             extnetwork:
 

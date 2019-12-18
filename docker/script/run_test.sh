@@ -153,6 +153,15 @@ run_ltptest() {
     wait_proc_done "runltp" $LtpLog
 }
 
+run_osstest() {
+    echo "run oss test"
+    curl https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py
+    python /tmp/get-pip.py
+    pip install -r /cfs/osstest/requirements.txt
+    python /cfs/osstest/run_test.py $LeaderAddr
+}
+
+
 stop_client() {
     echo -n "stop client "
     umount ${MntPoint} && echo "ok" || { echo "failed"; exit 1; }
@@ -176,6 +185,7 @@ check_status "DataNode"
 create_vol ; sleep 2
 create_dp ; sleep 3
 start_client ; sleep 2
-run_ltptest && \
-stop_client && \
+run_ltptest; sleep 2
+run_osstest; sleep 2
+stop_client;
 del_vol

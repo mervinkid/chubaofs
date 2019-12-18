@@ -17,7 +17,7 @@ Usage: ./run_docker.sh [ -h | --help ] [ -d | --disk </disk/path> ] [ -l | --ltp
     -o, --object-node       start ChubaoFS
     -c, --client            start ChubaoFS client docker image
     -m, --monitor           start monitor web ui
-    -l, --ltptest           run ltp test
+    -t, --test              run ltp test and oss test
     -r, --run               run servers, client and monitor
     --clear             clear old docker image
 EOF
@@ -53,14 +53,14 @@ start_monitor() {
     docker-compose -f ${RootPath}/docker/docker-compose.yml up -d monitor
 }
 
-start_ltptest() {
+start_test() {
     docker-compose -f ${RootPath}/docker/docker-compose.yml run client
 }
 
-run_ltptest() {
+run_test() {
     build
     start_servers
-    start_ltptest
+    start_test
 }
 
 run() {
@@ -82,8 +82,8 @@ for opt in ${ARGS[*]} ; do
         -b|--build)
             cmd=build
             ;;
-        -l|--ltptest)
-            cmd=run_ltptest
+        -t|--test)
+            cmd=run_test
             ;;
         -r|--run)
             cmd=run
@@ -145,7 +145,7 @@ case "-$cmd" in
     -run_client) start_client ;;
     -run_s3node) start_s3node ;;
     -run_monitor) start_monitor ;;
-    -run_ltptest) run_ltptest ;;
+    -run_test) run_test ;;
     -clean) clean ;;
     *) help ;;
 esac
