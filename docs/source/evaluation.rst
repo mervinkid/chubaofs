@@ -355,6 +355,35 @@ Metadata performance and scalability benchmark test by mdtest_.
 .. csv-table:: Tree Removal Benchmark
    :file: csv/cfs-mdtest-tree-removal.csv
 
+
+Object Storage Interface Performance (vs Minio)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Environment
+===========
+
+Read Performance
+================
+
+.. image:: pic/cfs-vs-minio-read-bandwidth.png
+   :align: center
+   :scale: 50 %
+   :alt: ChubaoFS vs Minio Read Benchmark
+
+.. csv-table:: ChubaoFS vs Minio Read Benchmark
+   :file: csv/cfs-vs-minio-read-bandwidth.csv
+
+Write Performance
+=================
+
+.. image:: pic/cfs-vs-minio-write-bandwidth.png
+   :align: center
+   :scale: 50 %
+   :alt: ChubaoFS vs Minio Write Benchmark
+
+.. csv-table:: ChubaoFS vs Minio Write Benchmark
+   :file: csv/cfs-vs-minio-write-bandwidth.csv
+
 Integrity
 -----------------
 
