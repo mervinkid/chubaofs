@@ -35,7 +35,7 @@ import (
 )
 
 // Apply applies the given operational commands.
-func (mp *metaPartition) Apply(command []byte, index uint64) (resp interface{}, err error) {
+func (mp *MetaPartition) Apply(command []byte, index uint64) (resp interface{}, err error) {
 	msg := &MetaItem{}
 	defer func() {
 		if err == nil {
@@ -81,7 +81,7 @@ func (mp *metaPartition) Apply(command []byte, index uint64) (resp interface{}, 
 		}
 		resp = mp.fsmEvictInode(ino)
 	case opFSMSetAttr:
-		req := &SetattrRequest{}
+		req := &proto.SetAttrRequest{}
 		err = json.Unmarshal(msg.V, req)
 		if err != nil {
 			return
@@ -106,7 +106,7 @@ func (mp *metaPartition) Apply(command []byte, index uint64) (resp interface{}, 
 		}
 		resp = mp.fsmUpdateDentry(den)
 	case opFSMUpdatePartition:
-		req := &UpdatePartitionReq{}
+		req := &proto.UpdateMetaPartitionRequest{}
 		if err = json.Unmarshal(msg.V, req); err != nil {
 			return
 		}
@@ -166,7 +166,7 @@ func (mp *metaPartition) Apply(command []byte, index uint64) (resp interface{}, 
 }
 
 // ApplyMemberChange  apply changes to the raft member.
-func (mp *metaPartition) ApplyMemberChange(confChange *raftproto.ConfChange, index uint64) (resp interface{}, err error) {
+func (mp *MetaPartition) ApplyMemberChange(confChange *raftproto.ConfChange, index uint64) (resp interface{}, err error) {
 	defer func() {
 		if err == nil {
 			mp.uploadApplyID(index)
@@ -202,13 +202,13 @@ func (mp *metaPartition) ApplyMemberChange(confChange *raftproto.ConfChange, ind
 }
 
 // Snapshot returns the snapshot of the current meta partition.
-func (mp *metaPartition) Snapshot() (snap raftproto.Snapshot, err error) {
+func (mp *MetaPartition) Snapshot() (snap raftproto.Snapshot, err error) {
 	snap, err = newMetaItemIterator(mp)
 	return
 }
 
 // ApplySnapshot applies the given snapshots.
-func (mp *metaPartition) ApplySnapshot(peers []raftproto.Peer, iter raftproto.SnapIterator) (err error) {
+func (mp *MetaPartition) ApplySnapshot(peers []raftproto.Peer, iter raftproto.SnapIterator) (err error) {
 	var (
 		data          []byte
 		index         int
@@ -307,7 +307,7 @@ func (mp *metaPartition) ApplySnapshot(peers []raftproto.Peer, iter raftproto.Sn
 }
 
 // HandleFatalEvent handles the fatal errors.
-func (mp *metaPartition) HandleFatalEvent(err *raft.FatalError) {
+func (mp *MetaPartition) HandleFatalEvent(err *raft.FatalError) {
 	// Panic while fatal event happen.
 	exporter.Warning(fmt.Sprintf("action[HandleFatalEvent] err[%v].", err))
 	log.LogFatalf("action[HandleFatalEvent] err[%v].", err)
@@ -315,8 +315,8 @@ func (mp *metaPartition) HandleFatalEvent(err *raft.FatalError) {
 }
 
 // HandleLeaderChange handles the leader changes.
-func (mp *metaPartition) HandleLeaderChange(leader uint64) {
-	exporter.Warning(fmt.Sprintf("metaPartition(%v) changeLeader to (%v)", mp.config.PartitionId, leader))
+func (mp *MetaPartition) HandleLeaderChange(leader uint64) {
+	exporter.Warning(fmt.Sprintf("MetaPartition(%v) changeLeader to (%v)", mp.config.PartitionId, leader))
 	if mp.config.NodeId == leader {
 		conn, err := net.DialTimeout("tcp", net.JoinHostPort("127.0.0.1", serverPort), time.Second)
 		if err != nil {
@@ -347,7 +347,7 @@ func (mp *metaPartition) HandleLeaderChange(leader uint64) {
 }
 
 // Put puts the given key-value pair (operation key and operation request) into the raft store.
-func (mp *metaPartition) submit(op uint32, data []byte) (resp interface{}, err error) {
+func (mp *MetaPartition) submit(op uint32, data []byte) (resp interface{}, err error) {
 	snap := NewMetaItem(0, nil, nil)
 	snap.Op = op
 	if data != nil {
@@ -363,6 +363,6 @@ func (mp *metaPartition) submit(op uint32, data []byte) (resp interface{}, err e
 	return
 }
 
-func (mp *metaPartition) uploadApplyID(applyId uint64) {
+func (mp *MetaPartition) uploadApplyID(applyId uint64) {
 	atomic.StoreUint64(&mp.applyID, applyId)
 }

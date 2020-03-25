@@ -15,15 +15,16 @@
 package metanode
 
 import (
-	"github.com/chubaofs/chubaofs/proto"
 	"net"
+
+	"github.com/chubaofs/chubaofs/proto"
 
 	"github.com/chubaofs/chubaofs/util/errors"
 	"github.com/chubaofs/chubaofs/util/log"
 )
 
 // Reply operation results to the master.
-func (m *metadataManager) respondToMaster(task *proto.AdminTask) (err error) {
+func (m *MetadataManager) respondToMaster(task *proto.AdminTask) (err error) {
 	// handle panic
 	defer func() {
 		if r := recover(); r != nil {
@@ -42,7 +43,7 @@ func (m *metadataManager) respondToMaster(task *proto.AdminTask) (err error) {
 }
 
 // Reply data through tcp connection to the client.
-func (m *metadataManager) respondToClient(conn net.Conn, p *Packet) (err error) {
+func (m *MetadataManager) respondToClient(conn net.Conn, p *Packet) (err error) {
 	// Handle panic
 	defer func() {
 		if r := recover(); r != nil {
@@ -65,7 +66,7 @@ func (m *metadataManager) respondToClient(conn net.Conn, p *Packet) (err error) 
 	return
 }
 
-func (m *metadataManager) responseAckOKToMaster(conn net.Conn, p *Packet) {
+func (m *MetadataManager) responseAckOKToMaster(conn net.Conn, p *Packet) {
 	go func() {
 		p.PacketOkReply()
 		if err := p.WriteToConn(conn); err != nil {

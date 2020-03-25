@@ -19,9 +19,10 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"github.com/chubaofs/chubaofs/proto"
 	"io"
 	"sync"
+
+	"github.com/chubaofs/chubaofs/proto"
 )
 
 const (

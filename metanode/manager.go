@@ -38,15 +38,6 @@ import (
 
 const partitionPrefix = "partition_"
 
-// MetadataManager manages all the meta partitions.
-type MetadataManager interface {
-	Start() error
-	Stop()
-	//CreatePartition(id string, start, end uint64, peers []proto.Peer) error
-	HandleMetadataOperation(conn net.Conn, p *Packet, remoteAddr string) error
-	GetPartition(id uint64) (MetaPartition, error)
-}
-
 // MetadataManagerConfig defines the configures in the metadata manager.
 type MetadataManagerConfig struct {
 	NodeID    uint64
@@ -55,7 +46,7 @@ type MetadataManagerConfig struct {
 	RaftStore raftstore.RaftStore
 }
 
-type metadataManager struct {
+type MetadataManager struct {
 	nodeId     uint64
 	zoneName   string
 	rootDir    string
@@ -63,11 +54,11 @@ type metadataManager struct {
 	connPool   *util.ConnectPool
 	state      uint32
 	mu         sync.RWMutex
-	partitions map[uint64]MetaPartition // Key: metaRangeId, Val: metaPartition
+	partitions map[uint64]*MetaPartition // Key: metaRangeId, Val: MetaPartition
 }
 
 // HandleMetadataOperation handles the metadata operations.
-func (m *metadataManager) HandleMetadataOperation(conn net.Conn, p *Packet,
+func (m *MetadataManager) HandleMetadataOperation(conn net.Conn, p *Packet,
 	remoteAddr string) (err error) {
 	metric := exporter.NewTPCnt(p.GetOpMsg())
 	defer metric.Set(err)
@@ -163,7 +154,7 @@ func (m *metadataManager) HandleMetadataOperation(conn net.Conn, p *Packet,
 }
 
 // Start starts the metadata manager.
-func (m *metadataManager) Start() (err error) {
+func (m *MetadataManager) Start() (err error) {
 	if atomic.CompareAndSwapUint32(&m.state, common.StateStandby, common.StateStart) {
 		defer func() {
 			var newState uint32
@@ -180,7 +171,7 @@ func (m *metadataManager) Start() (err error) {
 }
 
 // Stop stops the metadata manager.
-func (m *metadataManager) Stop() {
+func (m *MetadataManager) Stop() {
 	if atomic.CompareAndSwapUint32(&m.state, common.StateRunning, common.StateShutdown) {
 		defer atomic.StoreUint32(&m.state, common.StateStopped)
 		m.onStop()
@@ -188,14 +179,14 @@ func (m *metadataManager) Stop() {
 }
 
 // onStart creates the connection pool and loads the partitions.
-func (m *metadataManager) onStart() (err error) {
+func (m *MetadataManager) onStart() (err error) {
 	m.connPool = util.NewConnectPool()
 	err = m.loadPartitions()
 	return
 }
 
 // onStop stops each meta partitions.
-func (m *metadataManager) onStop() {
+func (m *MetadataManager) onStop() {
 	if m.partitions != nil {
 		for _, partition := range m.partitions {
 			partition.Stop()
@@ -205,7 +196,7 @@ func (m *metadataManager) onStop() {
 }
 
 // LoadMetaPartition returns the meta partition with the specified volName.
-func (m *metadataManager) getPartition(id uint64) (mp MetaPartition, err error) {
+func (m *MetadataManager) getPartition(id uint64) (mp *MetaPartition, err error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	mp, ok := m.partitions[id]
@@ -216,7 +207,7 @@ func (m *metadataManager) getPartition(id uint64) (mp MetaPartition, err error) 
 	return
 }
 
-func (m *metadataManager) loadPartitions() (err error) {
+func (m *MetadataManager) loadPartitions() (err error) {
 	// Check metadataDir directory
 	fileInfo, err := os.Stat(m.rootDir)
 	if err != nil {
@@ -301,13 +292,13 @@ func (m *metadataManager) loadPartitions() (err error) {
 	return
 }
 
-func (m *metadataManager) attachPartition(id uint64, partition MetaPartition) (err error) {
-	fmt.Println(fmt.Sprintf("start load metaPartition %v", id))
+func (m *MetadataManager) attachPartition(id uint64, partition *MetaPartition) (err error) {
+	fmt.Println(fmt.Sprintf("start load MetaPartition %v", id))
 	if err = partition.Start(); err != nil {
-		fmt.Println(fmt.Sprintf("fininsh load metaPartition %v error %v", id, err))
+		fmt.Println(fmt.Sprintf("fininsh load MetaPartition %v error %v", id, err))
 		return
 	}
-	fmt.Println(fmt.Sprintf("fininsh load metaPartition %v", id))
+	fmt.Println(fmt.Sprintf("fininsh load MetaPartition %v", id))
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.partitions[id] = partition
@@ -315,7 +306,7 @@ func (m *metadataManager) attachPartition(id uint64, partition MetaPartition) (e
 	return
 }
 
-func (m *metadataManager) detachPartition(id uint64) (err error) {
+func (m *MetadataManager) detachPartition(id uint64) (err error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if _, has := m.partitions[id]; has {
@@ -326,8 +317,8 @@ func (m *metadataManager) detachPartition(id uint64) (err error) {
 	return
 }
 
-func (m *metadataManager) createPartition(id uint64, volName string, start,
-end uint64, peers []proto.Peer) (err error) {
+func (m *MetadataManager) createPartition(id uint64, volName string, start,
+	end uint64, peers []proto.Peer) (err error) {
 	// check partitions
 	if _, err = m.getPartition(id); err == nil {
 		err = errors.NewErrorf("create partition id=%d is exsited!", id)
@@ -366,7 +357,7 @@ end uint64, peers []proto.Peer) (err error) {
 	return
 }
 
-func (m *metadataManager) deletePartition(id uint64) (err error) {
+func (m *MetadataManager) deletePartition(id uint64) (err error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	mp, has := m.partitions[id]
@@ -379,7 +370,7 @@ func (m *metadataManager) deletePartition(id uint64) (err error) {
 }
 
 // Range scans all the meta partitions.
-func (m *metadataManager) Range(f func(i uint64, p MetaPartition) bool) {
+func (m *MetadataManager) Range(f func(i uint64, p *MetaPartition) bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	for k, v := range m.partitions {
@@ -390,25 +381,25 @@ func (m *metadataManager) Range(f func(i uint64, p MetaPartition) bool) {
 }
 
 // GetPartition returns the meta partition with the given ID.
-func (m *metadataManager) GetPartition(id uint64) (mp MetaPartition, err error) {
+func (m *MetadataManager) GetPartition(id uint64) (mp *MetaPartition, err error) {
 	mp, err = m.getPartition(id)
 	return
 }
 
 // MarshalJSON only marshals the base information of every partition.
-func (m *metadataManager) MarshalJSON() (data []byte, err error) {
+func (m *MetadataManager) MarshalJSON() (data []byte, err error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	return json.Marshal(m.partitions)
 }
 
 // NewMetadataManager returns a new metadata manager.
-func NewMetadataManager(conf MetadataManagerConfig) MetadataManager {
-	return &metadataManager{
+func NewMetadataManager(conf MetadataManagerConfig) *MetadataManager {
+	return &MetadataManager{
 		nodeId:     conf.NodeID,
 		zoneName:   conf.ZoneName,
 		rootDir:    conf.RootDir,
 		raftStore:  conf.RaftStore,
-		partitions: make(map[uint64]MetaPartition),
+		partitions: make(map[uint64]*MetaPartition),
 	}
 }

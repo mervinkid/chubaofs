@@ -15,12 +15,12 @@
 package metanode
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
 	"net"
 	"os"
 	"runtime"
-	"bytes"
-	"fmt"
 
 	"github.com/chubaofs/chubaofs/proto"
 	"github.com/chubaofs/chubaofs/util"
@@ -33,7 +33,7 @@ const (
 	MaxUsedMemFactor = 1.1
 )
 
-func (m *metadataManager) opMasterHeartbeat(conn net.Conn, p *Packet,
+func (m *MetadataManager) opMasterHeartbeat(conn net.Conn, p *Packet,
 	remoteAddr string) (err error) {
 	// For ack to master
 	m.responseAckOKToMaster(conn, p)
@@ -59,7 +59,7 @@ func (m *metadataManager) opMasterHeartbeat(conn net.Conn, p *Packet,
 		adminTask.Status = proto.TaskFailed
 		goto end
 	}
-	m.Range(func(id uint64, partition MetaPartition) bool {
+	m.Range(func(id uint64, partition *MetaPartition) bool {
 		mConf := partition.GetBaseConfig()
 		mpr := &proto.MetaPartitionReport{
 			PartitionID: mConf.PartitionId,
@@ -95,7 +95,7 @@ end:
 	return
 }
 
-func (m *metadataManager) opCreateMetaPartition(conn net.Conn, p *Packet,
+func (m *MetadataManager) opCreateMetaPartition(conn net.Conn, p *Packet,
 	remoteAddr string) (err error) {
 	defer func() {
 		var buf []byte
@@ -133,9 +133,9 @@ func (m *metadataManager) opCreateMetaPartition(conn net.Conn, p *Packet,
 }
 
 // Handle OpCreate inode.
-func (m *metadataManager) opCreateInode(conn net.Conn, p *Packet,
+func (m *MetadataManager) opCreateInode(conn net.Conn, p *Packet,
 	remoteAddr string) (err error) {
-	req := &CreateInoReq{}
+	req := &proto.CreateInodeRequest{}
 	if err = json.Unmarshal(p.Data, req); err != nil {
 		p.PacketErrorWithBody(proto.OpErr, []byte(err.Error()))
 		m.respondToClient(conn, p)
@@ -158,9 +158,9 @@ func (m *metadataManager) opCreateInode(conn net.Conn, p *Packet,
 	return
 }
 
-func (m *metadataManager) opMetaLinkInode(conn net.Conn, p *Packet,
+func (m *MetadataManager) opMetaLinkInode(conn net.Conn, p *Packet,
 	remoteAddr string) (err error) {
-	req := &LinkInodeReq{}
+	req := &proto.LinkInodeRequest{}
 	if err = json.Unmarshal(p.Data, req); err != nil {
 		p.PacketErrorWithBody(proto.OpErr, []byte(err.Error()))
 		m.respondToClient(conn, p)
@@ -183,7 +183,7 @@ func (m *metadataManager) opMetaLinkInode(conn net.Conn, p *Packet,
 }
 
 // Handle OpCreate
-func (m *metadataManager) opFreeInodeOnRaftFollower(conn net.Conn, p *Packet,
+func (m *MetadataManager) opFreeInodeOnRaftFollower(conn net.Conn, p *Packet,
 	remoteAddr string) (err error) {
 	mp, err := m.getPartition(p.PartitionID)
 	if err != nil {
@@ -191,7 +191,7 @@ func (m *metadataManager) opFreeInodeOnRaftFollower(conn net.Conn, p *Packet,
 		m.respondToClient(conn, p)
 		return
 	}
-	mp.(*metaPartition).internalDelete(p.Data[:p.Size])
+	mp.internalDelete(p.Data[:p.Size])
 	p.PacketOkReply()
 	m.respondToClient(conn, p)
 
@@ -199,9 +199,9 @@ func (m *metadataManager) opFreeInodeOnRaftFollower(conn net.Conn, p *Packet,
 }
 
 // Handle OpCreate
-func (m *metadataManager) opCreateDentry(conn net.Conn, p *Packet,
+func (m *MetadataManager) opCreateDentry(conn net.Conn, p *Packet,
 	remoteAddr string) (err error) {
-	req := &CreateDentryReq{}
+	req := &proto.CreateDentryRequest{}
 	if err = json.Unmarshal(p.Data, req); err != nil {
 		p.PacketErrorWithBody(proto.OpErr, []byte(err.Error()))
 		m.respondToClient(conn, p)
@@ -224,9 +224,9 @@ func (m *metadataManager) opCreateDentry(conn net.Conn, p *Packet,
 }
 
 // Handle OpDelete Dentry
-func (m *metadataManager) opDeleteDentry(conn net.Conn, p *Packet,
+func (m *MetadataManager) opDeleteDentry(conn net.Conn, p *Packet,
 	remoteAddr string) (err error) {
-	req := &DeleteDentryReq{}
+	req := &proto.DeleteDentryRequest{}
 	if err = json.Unmarshal(p.Data, req); err != nil {
 		p.PacketErrorWithBody(proto.OpErr, nil)
 		m.respondToClient(conn, p)
@@ -248,9 +248,9 @@ func (m *metadataManager) opDeleteDentry(conn net.Conn, p *Packet,
 	return
 }
 
-func (m *metadataManager) opUpdateDentry(conn net.Conn, p *Packet,
+func (m *MetadataManager) opUpdateDentry(conn net.Conn, p *Packet,
 	remoteAddr string) (err error) {
-	req := &UpdateDentryReq{}
+	req := &proto.UpdateDentryRequest{}
 	if err = json.Unmarshal(p.Data, req); err != nil {
 		p.PacketErrorWithBody(proto.OpErr, nil)
 		m.respondToClient(conn, p)
@@ -272,9 +272,9 @@ func (m *metadataManager) opUpdateDentry(conn net.Conn, p *Packet,
 	return
 }
 
-func (m *metadataManager) opMetaUnlinkInode(conn net.Conn, p *Packet,
+func (m *MetadataManager) opMetaUnlinkInode(conn net.Conn, p *Packet,
 	remoteAddr string) (err error) {
-	req := &UnlinkInoReq{}
+	req := &proto.UnlinkInodeRequest{}
 	if err = json.Unmarshal(p.Data, req); err != nil {
 		p.PacketErrorWithBody(proto.OpErr, nil)
 		m.respondToClient(conn, p)
@@ -297,7 +297,7 @@ func (m *metadataManager) opMetaUnlinkInode(conn net.Conn, p *Packet,
 }
 
 // Handle OpReadDir
-func (m *metadataManager) opReadDir(conn net.Conn, p *Packet,
+func (m *MetadataManager) opReadDir(conn net.Conn, p *Packet,
 	remoteAddr string) (err error) {
 	req := &proto.ReadDirRequest{}
 	if err = json.Unmarshal(p.Data, req); err != nil {
@@ -321,9 +321,9 @@ func (m *metadataManager) opReadDir(conn net.Conn, p *Packet,
 	return
 }
 
-func (m *metadataManager) opMetaInodeGet(conn net.Conn, p *Packet,
+func (m *MetadataManager) opMetaInodeGet(conn net.Conn, p *Packet,
 	remoteAddr string) (err error) {
-	req := &InodeGetReq{}
+	req := &proto.InodeGetRequest{}
 	if err = json.Unmarshal(p.Data, req); err != nil {
 		p.PacketErrorWithBody(proto.OpErr, nil)
 		m.respondToClient(conn, p)
@@ -351,7 +351,7 @@ func (m *metadataManager) opMetaInodeGet(conn net.Conn, p *Packet,
 	return
 }
 
-func (m *metadataManager) opMetaEvictInode(conn net.Conn, p *Packet,
+func (m *MetadataManager) opMetaEvictInode(conn net.Conn, p *Packet,
 	remoteAddr string) (err error) {
 	req := &proto.EvictInodeRequest{}
 	if err = json.Unmarshal(p.Data, req); err != nil {
@@ -380,9 +380,9 @@ func (m *metadataManager) opMetaEvictInode(conn net.Conn, p *Packet,
 	return
 }
 
-func (m *metadataManager) opSetAttr(conn net.Conn, p *Packet,
+func (m *MetadataManager) opSetAttr(conn net.Conn, p *Packet,
 	remoteAddr string) (err error) {
-	req := &SetattrRequest{}
+	req := &proto.SetAttrRequest{}
 	if err = json.Unmarshal(p.Data, req); err != nil {
 		p.PacketErrorWithBody(proto.OpErr, []byte(err.Error()))
 		m.respondToClient(conn, p)
@@ -411,7 +411,7 @@ func (m *metadataManager) opSetAttr(conn net.Conn, p *Packet,
 }
 
 // Lookup request
-func (m *metadataManager) opMetaLookup(conn net.Conn, p *Packet,
+func (m *MetadataManager) opMetaLookup(conn net.Conn, p *Packet,
 	remoteAddr string) (err error) {
 	req := &proto.LookupRequest{}
 	if err = json.Unmarshal(p.Data, req); err != nil {
@@ -435,7 +435,7 @@ func (m *metadataManager) opMetaLookup(conn net.Conn, p *Packet,
 	return
 }
 
-func (m *metadataManager) opMetaExtentsAdd(conn net.Conn, p *Packet,
+func (m *MetadataManager) opMetaExtentsAdd(conn net.Conn, p *Packet,
 	remoteAddr string) (err error) {
 	req := &proto.AppendExtentKeyRequest{}
 	if err = json.Unmarshal(p.Data, req); err != nil {
@@ -465,7 +465,7 @@ func (m *metadataManager) opMetaExtentsAdd(conn net.Conn, p *Packet,
 	return
 }
 
-func (m *metadataManager) opMetaExtentsList(conn net.Conn, p *Packet,
+func (m *MetadataManager) opMetaExtentsList(conn net.Conn, p *Packet,
 	remoteAddr string) (err error) {
 	req := &proto.GetExtentsRequest{}
 	if err = json.Unmarshal(p.Data, req); err != nil {
@@ -490,14 +490,14 @@ func (m *metadataManager) opMetaExtentsList(conn net.Conn, p *Packet,
 	return
 }
 
-func (m *metadataManager) opMetaExtentsDel(conn net.Conn, p *Packet,
+func (m *MetadataManager) opMetaExtentsDel(conn net.Conn, p *Packet,
 	remoteAddr string) (err error) {
 	panic("not implemented yet")
 }
 
-func (m *metadataManager) opMetaExtentsTruncate(conn net.Conn, p *Packet,
+func (m *MetadataManager) opMetaExtentsTruncate(conn net.Conn, p *Packet,
 	remoteAddr string) (err error) {
-	req := &ExtentsTruncateReq{}
+	req := &proto.TruncateRequest{}
 	if err = json.Unmarshal(p.Data, req); err != nil {
 		p.PacketErrorWithBody(proto.OpErr, nil)
 		m.respondToClient(conn, p)
@@ -520,7 +520,7 @@ func (m *metadataManager) opMetaExtentsTruncate(conn net.Conn, p *Packet,
 }
 
 // Delete a meta partition.
-func (m *metadataManager) opDeleteMetaPartition(conn net.Conn,
+func (m *MetadataManager) opDeleteMetaPartition(conn net.Conn,
 	p *Packet, remoteAddr string) (err error) {
 	req := &proto.DeleteMetaPartitionRequest{}
 	adminTask := &proto.AdminTask{
@@ -553,9 +553,9 @@ func (m *metadataManager) opDeleteMetaPartition(conn net.Conn,
 	return
 }
 
-func (m *metadataManager) opUpdateMetaPartition(conn net.Conn, p *Packet,
+func (m *MetadataManager) opUpdateMetaPartition(conn net.Conn, p *Packet,
 	remoteAddr string) (err error) {
-	req := new(UpdatePartitionReq)
+	req := new(proto.UpdateMetaPartitionRequest)
 	adminTask := &proto.AdminTask{
 		Request: req,
 	}
@@ -577,7 +577,7 @@ func (m *metadataManager) opUpdateMetaPartition(conn net.Conn, p *Packet,
 		return
 	}
 	m.responseAckOKToMaster(conn, p)
-	resp := &UpdatePartitionResp{
+	resp := &proto.UpdateMetaPartitionResponse{
 		VolName:     req.VolName,
 		PartitionID: req.PartitionID,
 		End:         req.End,
@@ -591,7 +591,7 @@ func (m *metadataManager) opUpdateMetaPartition(conn net.Conn, p *Packet,
 	return
 }
 
-func (m *metadataManager) opLoadMetaPartition(conn net.Conn, p *Packet,
+func (m *MetadataManager) opLoadMetaPartition(conn net.Conn, p *Packet,
 	remoteAddr string) (err error) {
 	req := &proto.MetaPartitionLoadRequest{}
 	adminTask := &proto.AdminTask{
@@ -624,7 +624,7 @@ func (m *metadataManager) opLoadMetaPartition(conn net.Conn, p *Packet,
 	return
 }
 
-func (m *metadataManager) opDecommissionMetaPartition(conn net.Conn,
+func (m *MetadataManager) opDecommissionMetaPartition(conn net.Conn,
 	p *Packet, remoteAddr string) (err error) {
 	var reqData []byte
 	req := &proto.MetaPartitionDecommissionRequest{}
@@ -681,7 +681,7 @@ func (m *metadataManager) opDecommissionMetaPartition(conn net.Conn,
 	return
 }
 
-func (m *metadataManager) opAddMetaPartitionRaftMember(conn net.Conn,
+func (m *MetadataManager) opAddMetaPartitionRaftMember(conn net.Conn,
 	p *Packet, remoteAddr string) (err error) {
 	var reqData []byte
 	req := &proto.AddMetaPartitionRaftMemberRequest{}
@@ -739,7 +739,7 @@ func (m *metadataManager) opAddMetaPartitionRaftMember(conn net.Conn,
 	return
 }
 
-func (m *metadataManager) opRemoveMetaPartitionRaftMember(conn net.Conn,
+func (m *MetadataManager) opRemoveMetaPartitionRaftMember(conn net.Conn,
 	p *Packet, remoteAddr string) (err error) {
 	var reqData []byte
 	req := &proto.RemoveMetaPartitionRaftMemberRequest{}
@@ -804,7 +804,7 @@ func (m *metadataManager) opRemoveMetaPartitionRaftMember(conn net.Conn,
 	return
 }
 
-func (m *metadataManager) opMetaBatchInodeGet(conn net.Conn, p *Packet,
+func (m *MetadataManager) opMetaBatchInodeGet(conn net.Conn, p *Packet,
 	remoteAddr string) (err error) {
 	req := &proto.BatchInodeGetRequest{}
 	if err = json.Unmarshal(p.Data, req); err != nil {
@@ -823,7 +823,7 @@ func (m *metadataManager) opMetaBatchInodeGet(conn net.Conn, p *Packet,
 	return
 }
 
-func (m *metadataManager) opMetaPartitionTryToLeader(conn net.Conn, p *Packet,
+func (m *MetadataManager) opMetaPartitionTryToLeader(conn net.Conn, p *Packet,
 	remoteAddr string) (err error) {
 	mp, err := m.getPartition(p.PartitionID)
 	if err != nil {
@@ -841,7 +841,7 @@ errDeal:
 	return
 }
 
-func (m *metadataManager) opMetaDeleteInode(conn net.Conn, p *Packet,
+func (m *MetadataManager) opMetaDeleteInode(conn net.Conn, p *Packet,
 	remoteAddr string) (err error) {
 	req := &proto.DeleteInodeRequest{}
 	if err = json.Unmarshal(p.Data, req); err != nil {
@@ -865,7 +865,7 @@ func (m *metadataManager) opMetaDeleteInode(conn net.Conn, p *Packet,
 	return
 }
 
-func (m *metadataManager) opMetaSetXAttr(conn net.Conn, p *Packet, remoteAddr string) (err error) {
+func (m *MetadataManager) opMetaSetXAttr(conn net.Conn, p *Packet, remoteAddr string) (err error) {
 	req := &proto.SetXAttrRequest{}
 	if err = json.Unmarshal(p.Data, req); err != nil {
 		p.PacketErrorWithBody(proto.OpErr, []byte(err.Error()))
@@ -888,7 +888,7 @@ func (m *metadataManager) opMetaSetXAttr(conn net.Conn, p *Packet, remoteAddr st
 	return
 }
 
-func (m *metadataManager) opMetaGetXAttr(conn net.Conn, p *Packet, remoteAddr string) (err error) {
+func (m *MetadataManager) opMetaGetXAttr(conn net.Conn, p *Packet, remoteAddr string) (err error) {
 	req := &proto.GetXAttrRequest{}
 	if err = json.Unmarshal(p.Data, req); err != nil {
 		p.PacketErrorWithBody(proto.OpErr, []byte(err.Error()))
@@ -911,7 +911,7 @@ func (m *metadataManager) opMetaGetXAttr(conn net.Conn, p *Packet, remoteAddr st
 	return
 }
 
-func (m *metadataManager) opMetaBatchGetXAttr(conn net.Conn, p *Packet, remoteAddr string) (err error) {
+func (m *MetadataManager) opMetaBatchGetXAttr(conn net.Conn, p *Packet, remoteAddr string) (err error) {
 	req := &proto.BatchGetXAttrRequest{}
 	if err = json.Unmarshal(p.Data, req); err != nil {
 		p.PacketErrorWithBody(proto.OpErr, []byte(err.Error()))
@@ -934,7 +934,7 @@ func (m *metadataManager) opMetaBatchGetXAttr(conn net.Conn, p *Packet, remoteAd
 	return
 }
 
-func (m *metadataManager) opMetaRemoveXAttr(conn net.Conn, p *Packet, remoteAddr string) (err error) {
+func (m *MetadataManager) opMetaRemoveXAttr(conn net.Conn, p *Packet, remoteAddr string) (err error) {
 	req := &proto.RemoveXAttrRequest{}
 	if err = json.Unmarshal(p.Data, req); err != nil {
 		p.PacketErrorWithBody(proto.OpErr, []byte(err.Error()))
@@ -957,7 +957,7 @@ func (m *metadataManager) opMetaRemoveXAttr(conn net.Conn, p *Packet, remoteAddr
 	return
 }
 
-func (m *metadataManager) opMetaListXAttr(conn net.Conn, p *Packet, remoteAddr string) (err error) {
+func (m *MetadataManager) opMetaListXAttr(conn net.Conn, p *Packet, remoteAddr string) (err error) {
 	req := &proto.ListXAttrRequest{}
 	if err = json.Unmarshal(p.Data, req); err != nil {
 		p.PacketErrorWithBody(proto.OpErr, []byte(err.Error()))
@@ -980,7 +980,7 @@ func (m *metadataManager) opMetaListXAttr(conn net.Conn, p *Packet, remoteAddr s
 	return
 }
 
-func (m *metadataManager) opMetaBatchExtentsAdd(conn net.Conn, p *Packet, remoteAddr string) (err error) {
+func (m *MetadataManager) opMetaBatchExtentsAdd(conn net.Conn, p *Packet, remoteAddr string) (err error) {
 	req := &proto.AppendExtentKeysRequest{}
 	if err = json.Unmarshal(p.Data, req); err != nil {
 		p.PacketErrorWithBody(proto.OpErr, []byte(err.Error()))
@@ -1003,7 +1003,7 @@ func (m *metadataManager) opMetaBatchExtentsAdd(conn net.Conn, p *Packet, remote
 	return
 }
 
-func (m *metadataManager) opCreateMultipart(conn net.Conn, p *Packet, remote string) (err error) {
+func (m *MetadataManager) opCreateMultipart(conn net.Conn, p *Packet, remote string) (err error) {
 	req := &proto.CreateMultipartRequest{}
 	if err = json.Unmarshal(p.Data, req); err != nil {
 		p.PacketErrorWithBody(proto.OpErr, []byte(err.Error()))
@@ -1024,7 +1024,7 @@ func (m *metadataManager) opCreateMultipart(conn net.Conn, p *Packet, remote str
 	return
 }
 
-func (m *metadataManager) opRemoveMultipart(conn net.Conn, p *Packet, remote string) (err error) {
+func (m *MetadataManager) opRemoveMultipart(conn net.Conn, p *Packet, remote string) (err error) {
 	req := &proto.RemoveMultipartRequest{}
 	if err = json.Unmarshal(p.Data, req); err != nil {
 		p.PacketErrorWithBody(proto.OpErr, []byte(err.Error()))
@@ -1045,7 +1045,7 @@ func (m *metadataManager) opRemoveMultipart(conn net.Conn, p *Packet, remote str
 	return
 }
 
-func (m *metadataManager) opGetMultipart(conn net.Conn, p *Packet, remote string) (err error) {
+func (m *MetadataManager) opGetMultipart(conn net.Conn, p *Packet, remote string) (err error) {
 	req := &proto.GetMultipartRequest{}
 	if err = json.Unmarshal(p.Data, req); err != nil {
 		p.PacketErrorWithBody(proto.OpErr, []byte(err.Error()))
@@ -1066,7 +1066,7 @@ func (m *metadataManager) opGetMultipart(conn net.Conn, p *Packet, remote string
 	return
 }
 
-func (m *metadataManager) opAppendMultipart(conn net.Conn, p *Packet, remote string) (err error) {
+func (m *MetadataManager) opAppendMultipart(conn net.Conn, p *Packet, remote string) (err error) {
 	defer func() {
 		if err != nil {
 			p.PacketErrorWithBody(proto.OpErr, []byte(err.Error()))
@@ -1088,7 +1088,7 @@ func (m *metadataManager) opAppendMultipart(conn net.Conn, p *Packet, remote str
 	return
 }
 
-func (m *metadataManager) opListMultipart(conn net.Conn, p *Packet, remote string) (err error) {
+func (m *MetadataManager) opListMultipart(conn net.Conn, p *Packet, remote string) (err error) {
 	req := &proto.ListMultipartRequest{}
 	if err = json.Unmarshal(p.Data, req); err != nil {
 		p.PacketErrorWithBody(proto.OpErr, []byte(err.Error()))

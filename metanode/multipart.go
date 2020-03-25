@@ -17,10 +17,11 @@ package metanode
 import (
 	"bytes"
 	"encoding/binary"
-	"github.com/chubaofs/chubaofs/util/btree"
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/chubaofs/chubaofs/util/btree"
 )
 
 // Part defined necessary fields for multipart part management.

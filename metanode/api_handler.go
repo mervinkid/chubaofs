@@ -21,6 +21,7 @@ import (
 	"strconv"
 
 	"bytes"
+
 	"github.com/chubaofs/chubaofs/proto"
 	"github.com/chubaofs/chubaofs/util/log"
 )
@@ -183,7 +184,7 @@ func (m *MetaNode) getInodeHandler(w http.ResponseWriter, r *http.Request) {
 		resp.Msg = err.Error()
 		return
 	}
-	req := &InodeGetReq{
+	req := &proto.InodeGetRequest{
 		PartitionID: pid,
 		Inode:       id,
 	}
@@ -275,7 +276,7 @@ func (m *MetaNode) getDentryHandler(w http.ResponseWriter, r *http.Request) {
 		resp.Msg = err.Error()
 		return
 	}
-	req := &LookupReq{
+	req := &proto.LookupRequest{
 		PartitionID: pid,
 		ParentID:    pIno,
 		Name:        name,
@@ -383,7 +384,7 @@ func (m *MetaNode) getDirectoryHandler(w http.ResponseWriter, r *http.Request) {
 		resp.Msg = err.Error()
 		return
 	}
-	req := ReadDirReq{
+	req := proto.ReadDirRequest{
 		ParentID: pIno,
 	}
 	p := &Packet{}

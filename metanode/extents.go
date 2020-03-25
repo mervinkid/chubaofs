@@ -17,8 +17,9 @@ package metanode
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/chubaofs/chubaofs/proto"
 	"sync"
+
+	"github.com/chubaofs/chubaofs/proto"
 )
 
 var (

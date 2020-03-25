@@ -37,13 +37,13 @@ const (
 
 var extentsFileHeader = []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08}
 
-func (mp *metaPartition) startToDeleteExtents() {
+func (mp *MetaPartition) startToDeleteExtents() {
 	fileList := list.New()
 	go mp.appendDelExtentsToFile(fileList)
 	go mp.deleteExtentsFromList(fileList)
 }
 
-func (mp *metaPartition) appendDelExtentsToFile(fileList *list.List) {
+func (mp *MetaPartition) appendDelExtentsToFile(fileList *list.List) {
 	var (
 		fileName string
 		fileSize int64
@@ -132,7 +132,7 @@ LOOP:
 }
 
 // Delete all the extents of a file.
-func (mp *metaPartition) deleteExtentsFromList(fileList *list.List) {
+func (mp *MetaPartition) deleteExtentsFromList(fileList *list.List) {
 	var (
 		element  *list.Element
 		fileName string

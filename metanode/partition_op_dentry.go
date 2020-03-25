@@ -22,7 +22,7 @@ import (
 )
 
 // CreateDentry returns a new dentry.
-func (mp *metaPartition) CreateDentry(req *CreateDentryReq, p *Packet) (err error) {
+func (mp *MetaPartition) CreateDentry(req *proto.CreateDentryRequest, p *Packet) (err error) {
 	if req.ParentID == req.Inode {
 		err = fmt.Errorf("parentId is equal inodeId")
 		p.PacketErrorWithBody(proto.OpExistErr, []byte(err.Error()))
@@ -49,7 +49,7 @@ func (mp *metaPartition) CreateDentry(req *CreateDentryReq, p *Packet) (err erro
 }
 
 // DeleteDentry deletes a dentry.
-func (mp *metaPartition) DeleteDentry(req *DeleteDentryReq, p *Packet) (err error) {
+func (mp *MetaPartition) DeleteDentry(req *proto.DeleteDentryRequest, p *Packet) (err error) {
 	dentry := &Dentry{
 		ParentId: req.ParentID,
 		Name:     req.Name,
@@ -69,7 +69,7 @@ func (mp *metaPartition) DeleteDentry(req *DeleteDentryReq, p *Packet) (err erro
 	dentry = retMsg.Msg
 	if p.ResultCode == proto.OpOk {
 		var reply []byte
-		resp := &DeleteDentryResp{
+		resp := &proto.DeleteDentryResponse{
 			Inode: dentry.Inode,
 		}
 		reply, err = json.Marshal(resp)
@@ -79,7 +79,7 @@ func (mp *metaPartition) DeleteDentry(req *DeleteDentryReq, p *Packet) (err erro
 }
 
 // UpdateDentry updates a dentry.
-func (mp *metaPartition) UpdateDentry(req *UpdateDentryReq, p *Packet) (err error) {
+func (mp *MetaPartition) UpdateDentry(req *proto.UpdateDentryRequest, p *Packet) (err error) {
 	if req.ParentID == req.Inode {
 		err = fmt.Errorf("parentId is equal inodeId")
 		p.PacketErrorWithBody(proto.OpExistErr, []byte(err.Error()))
@@ -105,7 +105,7 @@ func (mp *metaPartition) UpdateDentry(req *UpdateDentryReq, p *Packet) (err erro
 	p.ResultCode = msg.Status
 	if msg.Status == proto.OpOk {
 		var reply []byte
-		m := &UpdateDentryResp{
+		m := &proto.UpdateDentryResponse{
 			Inode: msg.Msg.Inode,
 		}
 		reply, err = json.Marshal(m)
@@ -115,7 +115,7 @@ func (mp *metaPartition) UpdateDentry(req *UpdateDentryReq, p *Packet) (err erro
 }
 
 // ReadDir reads the directory based on the given request.
-func (mp *metaPartition) ReadDir(req *ReadDirReq, p *Packet) (err error) {
+func (mp *MetaPartition) ReadDir(req *proto.ReadDirRequest, p *Packet) (err error) {
 	resp := mp.readDir(req)
 	reply, err := json.Marshal(resp)
 	if err != nil {
@@ -127,7 +127,7 @@ func (mp *metaPartition) ReadDir(req *ReadDirReq, p *Packet) (err error) {
 }
 
 // Lookup looks up the given dentry from the request.
-func (mp *metaPartition) Lookup(req *LookupReq, p *Packet) (err error) {
+func (mp *MetaPartition) Lookup(req *proto.LookupRequest, p *Packet) (err error) {
 	dentry := &Dentry{
 		ParentId: req.ParentID,
 		Name:     req.Name,
@@ -135,7 +135,7 @@ func (mp *metaPartition) Lookup(req *LookupReq, p *Packet) (err error) {
 	dentry, status := mp.getDentry(dentry)
 	var reply []byte
 	if status == proto.OpOk {
-		resp := &LookupResp{
+		resp := &proto.LookupResponse{
 			Inode: dentry.Inode,
 			Mode:  dentry.Type,
 		}
@@ -149,6 +149,6 @@ func (mp *metaPartition) Lookup(req *LookupReq, p *Packet) (err error) {
 }
 
 // GetDentryTree returns the dentry tree stored in the meta partition.
-func (mp *metaPartition) GetDentryTree() *BTree {
+func (mp *MetaPartition) GetDentryTree() *BTree {
 	return mp.dentryTree.GetTree()
 }

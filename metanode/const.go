@@ -15,62 +15,9 @@
 package metanode
 
 import (
-	"github.com/chubaofs/chubaofs/proto"
-	"github.com/chubaofs/chubaofs/util/errors"
 	"time"
-)
 
-// Type alias.
-type (
-	// Master -> MetaNode  create metaPartition request
-	CreateMetaRangeReq = proto.CreateMetaPartitionRequest
-	// MetaNode -> Master create metaPartition response
-	CreateMetaRangeResp = proto.CreateMetaPartitionResponse
-	// Client -> MetaNode create Inode request
-	CreateInoReq = proto.CreateInodeRequest
-	// MetaNode -> Client create Inode response
-	CreateInoResp = proto.CreateInodeResponse
-	// Client -> MetaNode create Link Request
-	LinkInodeReq = proto.LinkInodeRequest
-	// MetaNode -> Client create Link Response
-	LinkInodeResp = proto.LinkInodeResponse
-	// Client -> MetaNode delete Inode request struct
-	UnlinkInoReq = proto.UnlinkInodeRequest
-	// MetaNode -> Client delete Inode response
-	UnlinkInoResp = proto.UnlinkInodeResponse
-	// Client -> MetaNode create Dentry request struct
-	CreateDentryReq = proto.CreateDentryRequest
-	// Client -> MetaNode delete Dentry request
-	DeleteDentryReq = proto.DeleteDentryRequest
-	// MetaNode -> Client delete Dentry response
-	DeleteDentryResp = proto.DeleteDentryResponse
-	// Client -> MetaNode updateDentry request
-	UpdateDentryReq = proto.UpdateDentryRequest
-	// MetaNode -> Client updateDentry response
-	UpdateDentryResp = proto.UpdateDentryResponse
-	// Client -> MetaNode read dir request
-	ReadDirReq = proto.ReadDirRequest
-	// MetaNode -> Client read dir response
-	ReadDirResp = proto.ReadDirResponse
-	// MetaNode -> Client lookup
-	LookupReq = proto.LookupRequest
-	// Client -> MetaNode lookup
-	LookupResp = proto.LookupResponse
-	// Client -> MetaNode
-	InodeGetReq = proto.InodeGetRequest
-	// Client -> MetaNode
-	InodeGetReqBatch = proto.BatchInodeGetRequest
-	// Master -> MetaNode
-	UpdatePartitionReq = proto.UpdateMetaPartitionRequest
-	// MetaNode -> Master
-	UpdatePartitionResp = proto.UpdateMetaPartitionResponse
-	// Client -> MetaNode
-	ExtentsTruncateReq = proto.TruncateRequest
-
-	// Client -> MetaNode
-	EvictInodeReq = proto.EvictInodeRequest
-	// Client -> MetaNode
-	SetattrRequest = proto.SetAttrRequest
+	"github.com/chubaofs/chubaofs/util/errors"
 )
 
 const (

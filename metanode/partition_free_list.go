@@ -16,14 +16,15 @@ package metanode
 
 import (
 	"fmt"
-	"github.com/chubaofs/chubaofs/proto"
-	"github.com/chubaofs/chubaofs/util/errors"
-	"github.com/chubaofs/chubaofs/util/log"
 	"net"
 	"os"
 	"path"
 	"sync"
 	"time"
+
+	"github.com/chubaofs/chubaofs/proto"
+	"github.com/chubaofs/chubaofs/util/errors"
+	"github.com/chubaofs/chubaofs/util/log"
 )
 
 const (
@@ -35,7 +36,7 @@ const (
 	DeleteInodeFileExtension = "INODE_DEL"
 )
 
-func (mp *metaPartition) startFreeList() (err error) {
+func (mp *MetaPartition) startFreeList() (err error) {
 	if mp.delInodeFp, err = os.OpenFile(path.Join(mp.config.RootDir,
 		DeleteInodeFileExtension), OpenRWAppendOpt, 0644); err != nil {
 		return
@@ -49,7 +50,7 @@ func (mp *metaPartition) startFreeList() (err error) {
 	return
 }
 
-func (mp *metaPartition) updateVolWorker() {
+func (mp *MetaPartition) updateVolWorker() {
 	t := time.NewTicker(UpdateVolTicket)
 	var convert = func(view *proto.DataPartitionsView) *DataPartitionsView {
 		newView := &DataPartitionsView{
@@ -83,7 +84,7 @@ func (mp *metaPartition) updateVolWorker() {
 	}
 }
 
-func (mp *metaPartition) deleteWorker() {
+func (mp *MetaPartition) deleteWorker() {
 	var (
 		idx      int
 		isLeader bool
@@ -118,7 +119,7 @@ Begin:
 }
 
 // Delete the marked inodes.
-func (mp *metaPartition) deleteMarkedInodes(inoSlice []uint64) {
+func (mp *MetaPartition) deleteMarkedInodes(inoSlice []uint64) {
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 
@@ -177,7 +178,7 @@ func (mp *metaPartition) deleteMarkedInodes(inoSlice []uint64) {
 	}
 }
 
-func (mp *metaPartition) syncToRaftFollowersFreeInode(hasDeleteInodes []byte) (err error) {
+func (mp *MetaPartition) syncToRaftFollowersFreeInode(hasDeleteInodes []byte) (err error) {
 	raftPeers := mp.GetPeers()
 	raftPeersError := make([]error, len(raftPeers))
 	wg := new(sync.WaitGroup)
@@ -196,7 +197,7 @@ func (mp *metaPartition) syncToRaftFollowersFreeInode(hasDeleteInodes []byte) (e
 	return
 }
 
-func (mp *metaPartition) notifyRaftFollowerToFreeInodes(wg *sync.WaitGroup, target string, hasDeleteInodes []byte) (err error) {
+func (mp *MetaPartition) notifyRaftFollowerToFreeInodes(wg *sync.WaitGroup, target string, hasDeleteInodes []byte) (err error) {
 	var conn *net.TCPConn
 	conn, err = mp.config.ConnPool.GetConnect(target)
 	defer func() {
@@ -227,7 +228,7 @@ func (mp *metaPartition) notifyRaftFollowerToFreeInodes(wg *sync.WaitGroup, targ
 	return
 }
 
-func (mp *metaPartition) doDeleteMarkedInodes(ext *proto.ExtentKey) (err error) {
+func (mp *MetaPartition) doDeleteMarkedInodes(ext *proto.ExtentKey) (err error) {
 	// get the data node view
 	dp := mp.vol.GetPartition(ext.PartitionId)
 	if dp == nil {
@@ -270,7 +271,7 @@ func (mp *metaPartition) doDeleteMarkedInodes(ext *proto.ExtentKey) (err error) 
 	return
 }
 
-func (mp *metaPartition) persistDeletedInodes(inos []uint64) {
+func (mp *MetaPartition) persistDeletedInodes(inos []uint64) {
 	for _, ino := range inos {
 		if _, err := mp.delInodeFp.WriteString(fmt.Sprintf("%v\n", ino)); err != nil {
 			log.LogWarnf("[persistDeletedInodes] failed store ino=%v", ino)

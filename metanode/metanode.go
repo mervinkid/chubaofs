@@ -48,7 +48,7 @@ type MetaNode struct {
 	listen            string
 	metadataDir       string // root dir of the metaNode
 	raftDir           string // root dir of the raftStore log
-	metadataManager   MetadataManager
+	metadataManager   *MetadataManager
 	localAddr         string
 	clusterId         string
 	raftStore         raftstore.RaftStore
@@ -237,7 +237,7 @@ func (m *MetaNode) startMetaManager() (err error) {
 			return
 		}
 	}
-	// load metadataManager
+	// load MetadataManager
 	conf := MetadataManagerConfig{
 		NodeID:    m.nodeId,
 		RootDir:   m.metadataDir,

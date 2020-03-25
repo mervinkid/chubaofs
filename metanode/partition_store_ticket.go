@@ -32,7 +32,7 @@ type storeMsg struct {
 	multipartTree *BTree
 }
 
-func (mp *metaPartition) startSchedule(curIndex uint64) {
+func (mp *MetaPartition) startSchedule(curIndex uint64) {
 	timer := time.NewTimer(time.Hour * 24 * 365)
 	timer.Stop()
 	scheduleState := common.StateStopped
@@ -122,7 +122,7 @@ func (mp *metaPartition) startSchedule(curIndex uint64) {
 	}(mp.stopC)
 }
 
-func (mp *metaPartition) stop() {
+func (mp *MetaPartition) stop() {
 	if mp.stopC != nil {
 		close(mp.stopC)
 	}

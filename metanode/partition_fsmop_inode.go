@@ -33,7 +33,7 @@ func NewInodeResponse() *InodeResponse {
 }
 
 // Create and inode and attach it to the inode tree.
-func (mp *metaPartition) fsmCreateInode(ino *Inode) (status uint8) {
+func (mp *MetaPartition) fsmCreateInode(ino *Inode) (status uint8) {
 	status = proto.OpOk
 	if _, ok := mp.inodeTree.ReplaceOrInsert(ino, false); !ok {
 		status = proto.OpExistErr
@@ -41,7 +41,7 @@ func (mp *metaPartition) fsmCreateInode(ino *Inode) (status uint8) {
 	return
 }
 
-func (mp *metaPartition) fsmCreateLinkInode(ino *Inode) (resp *InodeResponse) {
+func (mp *MetaPartition) fsmCreateLinkInode(ino *Inode) (resp *InodeResponse) {
 	resp = NewInodeResponse()
 	resp.Status = proto.OpOk
 	item := mp.inodeTree.CopyGet(ino)
@@ -59,7 +59,7 @@ func (mp *metaPartition) fsmCreateLinkInode(ino *Inode) (resp *InodeResponse) {
 	return
 }
 
-func (mp *metaPartition) getInode(ino *Inode) (resp *InodeResponse) {
+func (mp *MetaPartition) getInode(ino *Inode) (resp *InodeResponse) {
 	resp = NewInodeResponse()
 	resp.Status = proto.OpOk
 	item := mp.inodeTree.Get(ino)
@@ -81,7 +81,7 @@ func (mp *metaPartition) getInode(ino *Inode) (resp *InodeResponse) {
 	return
 }
 
-func (mp *metaPartition) hasInode(ino *Inode) (ok bool) {
+func (mp *MetaPartition) hasInode(ino *Inode) (ok bool) {
 	item := mp.inodeTree.Get(ino)
 	if item == nil {
 		ok = false
@@ -96,17 +96,17 @@ func (mp *metaPartition) hasInode(ino *Inode) (ok bool) {
 	return
 }
 
-func (mp *metaPartition) getInodeTree() *BTree {
+func (mp *MetaPartition) getInodeTree() *BTree {
 	return mp.inodeTree.GetTree()
 }
 
 // Ascend is the wrapper of inodeTree.Ascend
-func (mp *metaPartition) Ascend(f func(i BtreeItem) bool) {
+func (mp *MetaPartition) Ascend(f func(i BtreeItem) bool) {
 	mp.inodeTree.Ascend(f)
 }
 
 // fsmUnlinkInode delete the specified inode from inode tree.
-func (mp *metaPartition) fsmUnlinkInode(ino *Inode) (resp *InodeResponse) {
+func (mp *MetaPartition) fsmUnlinkInode(ino *Inode) (resp *InodeResponse) {
 	resp = NewInodeResponse()
 	resp.Status = proto.OpOk
 	item := mp.inodeTree.CopyGet(ino)
@@ -132,11 +132,11 @@ func (mp *metaPartition) fsmUnlinkInode(ino *Inode) (resp *InodeResponse) {
 	return
 }
 
-func (mp *metaPartition) internalHasInode(ino *Inode) bool {
+func (mp *MetaPartition) internalHasInode(ino *Inode) bool {
 	return mp.inodeTree.Has(ino)
 }
 
-func (mp *metaPartition) internalDelete(val []byte) (err error) {
+func (mp *MetaPartition) internalDelete(val []byte) (err error) {
 	if len(val) == 0 {
 		return
 	}
@@ -157,14 +157,14 @@ func (mp *metaPartition) internalDelete(val []byte) (err error) {
 	}
 }
 
-func (mp *metaPartition) internalDeleteInode(ino *Inode) {
+func (mp *MetaPartition) internalDeleteInode(ino *Inode) {
 	mp.inodeTree.Delete(ino)
 	mp.freeList.Remove(ino.Inode)
 	mp.extendTree.Delete(&Extend{inode: ino.Inode}) // Also delete extend attribute.
 	return
 }
 
-func (mp *metaPartition) fsmAppendExtents(ino *Inode) (status uint8) {
+func (mp *MetaPartition) fsmAppendExtents(ino *Inode) (status uint8) {
 	status = proto.OpOk
 	var items []BtreeItem
 	item := mp.inodeTree.CopyGet(ino)
@@ -189,7 +189,7 @@ func (mp *metaPartition) fsmAppendExtents(ino *Inode) (status uint8) {
 	return
 }
 
-func (mp *metaPartition) fsmExtentsTruncate(ino *Inode) (resp *InodeResponse) {
+func (mp *MetaPartition) fsmExtentsTruncate(ino *Inode) (resp *InodeResponse) {
 	resp = NewInodeResponse()
 
 	resp.Status = proto.OpOk
@@ -222,7 +222,7 @@ func (mp *metaPartition) fsmExtentsTruncate(ino *Inode) (resp *InodeResponse) {
 	return
 }
 
-func (mp *metaPartition) fsmEvictInode(ino *Inode) (resp *InodeResponse) {
+func (mp *MetaPartition) fsmEvictInode(ino *Inode) (resp *InodeResponse) {
 	resp = NewInodeResponse()
 
 	resp.Status = proto.OpOk
@@ -249,7 +249,7 @@ func (mp *metaPartition) fsmEvictInode(ino *Inode) (resp *InodeResponse) {
 	return
 }
 
-func (mp *metaPartition) checkAndInsertFreeList(ino *Inode) {
+func (mp *MetaPartition) checkAndInsertFreeList(ino *Inode) {
 	if proto.IsDir(ino.Type) {
 		return
 	}
@@ -258,7 +258,7 @@ func (mp *metaPartition) checkAndInsertFreeList(ino *Inode) {
 	}
 }
 
-func (mp *metaPartition) fsmSetAttr(req *SetattrRequest) (err error) {
+func (mp *MetaPartition) fsmSetAttr(req *proto.SetAttrRequest) (err error) {
 	ino := NewInode(req.Inode, req.Mode)
 	item := mp.inodeTree.CopyGet(ino)
 	if item == nil {

@@ -32,7 +32,7 @@ func NewDentryResponse() *DentryResponse {
 }
 
 // Insert a dentry into the dentry tree.
-func (mp *metaPartition) fsmCreateDentry(dentry *Dentry,
+func (mp *MetaPartition) fsmCreateDentry(dentry *Dentry,
 	forceUpdate bool) (status uint8) {
 	status = proto.OpOk
 	item := mp.inodeTree.CopyGet(NewInode(dentry.ParentId, 0))
@@ -76,7 +76,7 @@ func (mp *metaPartition) fsmCreateDentry(dentry *Dentry,
 }
 
 // Query a dentry from the dentry tree with specified dentry info.
-func (mp *metaPartition) getDentry(dentry *Dentry) (*Dentry, uint8) {
+func (mp *MetaPartition) getDentry(dentry *Dentry) (*Dentry, uint8) {
 	status := proto.OpOk
 	item := mp.dentryTree.Get(dentry)
 	if item == nil {
@@ -88,7 +88,7 @@ func (mp *metaPartition) getDentry(dentry *Dentry) (*Dentry, uint8) {
 }
 
 // Delete dentry from the dentry tree.
-func (mp *metaPartition) fsmDeleteDentry(dentry *Dentry) (
+func (mp *MetaPartition) fsmDeleteDentry(dentry *Dentry) (
 	resp *DentryResponse) {
 	resp = NewDentryResponse()
 	resp.Status = proto.OpOk
@@ -111,7 +111,7 @@ func (mp *metaPartition) fsmDeleteDentry(dentry *Dentry) (
 	return
 }
 
-func (mp *metaPartition) fsmUpdateDentry(dentry *Dentry) (
+func (mp *MetaPartition) fsmUpdateDentry(dentry *Dentry) (
 	resp *DentryResponse) {
 	resp = NewDentryResponse()
 	resp.Status = proto.OpOk
@@ -127,12 +127,12 @@ func (mp *metaPartition) fsmUpdateDentry(dentry *Dentry) (
 	return
 }
 
-func (mp *metaPartition) getDentryTree() *BTree {
+func (mp *MetaPartition) getDentryTree() *BTree {
 	return mp.dentryTree.GetTree()
 }
 
-func (mp *metaPartition) readDir(req *ReadDirReq) (resp *ReadDirResp) {
-	resp = &ReadDirResp{}
+func (mp *MetaPartition) readDir(req *proto.ReadDirRequest) (resp *proto.ReadDirResponse) {
+	resp = &proto.ReadDirResponse{}
 	begDentry := &Dentry{
 		ParentId: req.ParentID,
 	}
