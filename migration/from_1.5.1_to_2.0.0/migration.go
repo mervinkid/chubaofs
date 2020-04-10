@@ -125,7 +125,36 @@ func execute(address string) (err error) {
 	statusDone()
 	var volumes = clusterView.VolStatInfo
 
-	// 2. Process volumes one by one
+	// 2. Collect user list
+	fmt.Printf("Collecting users ... ")
+	var users []*proto.UserInfo
+	if users, err = client.UserAPI().ListUsers(""); err != nil {
+		log.Printf("[ERROR] Execute: get user list info fail: err(%v)", err)
+		statusFail()
+		return
+	}
+	statusDone()
+	time.Sleep(1 * time.Second)
+
+	// 3. Cleanup shadow users
+	for _, user := range users {
+		if user.UserType != proto.UserTypeNormal {
+			continue
+		}
+		if len(user.Policy.OwnVols) == 0 {
+			fmt.Printf("Cleanup shadow user %v ... ", user.UserID)
+			if err = client.UserAPI().DeleteUser(user.UserID); err != nil {
+				log.Printf("[ERROR] Execute: cleanup shadow user fail: user(%v) err(%v)", user.UserID, err)
+				statusFail()
+				return
+			}
+			log.Printf("[INFO] Execute: cleanup shadow user: user(%v)", user.UserID)
+			statusDone()
+		}
+	}
+	time.Sleep(1 * time.Second)
+
+	// 4. Process volumes one by one
 	sort.SliceStable(volumes, func(i, j int) bool {
 		// Prioritize special volumes
 		isISpec := isSpecialVolume(volumes[i].Name)
@@ -178,7 +207,10 @@ func processVolume(volumeName string, client *master.MasterClient) (err error) {
 	// Collect volume info
 	var volView *proto.VolView
 	if volView, err = client.ClientAPI().GetVolumeWithoutAuthKey(volumeName); err != nil {
-		statusFail()
+		return
+	}
+	var simpleInfo *proto.SimpleVolView
+	if simpleInfo, err = client.AdminAPI().GetVolumeSimpleInfo(volumeName); err != nil {
 		return
 	}
 	owner := volView.Owner
@@ -219,16 +251,11 @@ func processVolume(volumeName string, client *master.MasterClient) (err error) {
 			volumeName, owner)
 	}
 
-	if ossSecure.AccessKey != userInfo.AccessKey && isSpecialVolume(volumeName) {
+	if ossSecure.AccessKey != userInfo.AccessKey {
 		// Create a shadow user and authorize it.
-		var shadowUser string
-		if len(volumeName) > 8 {
-			shadowUser = owner + "_" + volumeName[:8]
-		} else {
-			shadowUser = owner + "_" + volumeName
-		}
-		shadowUser = strings.Trim(shadowUser, "_")
-		log.Printf("Process: shadow user: volume(%v) owner(%v) shadow(%v)", volumeName, owner, shadowUser)
+
+		shadowUser := shadowUserID(simpleInfo.ID, simpleInfo.Owner)
+		log.Printf("[INFO] Process: shadow user: volume(%v) owner(%v) shadow(%v)", volumeName, owner, shadowUser)
 		_, err = client.UserAPI().CreateUser(&proto.UserCreateParam{
 			ID:        shadowUser,
 			AccessKey: ossSecure.AccessKey,
@@ -247,7 +274,7 @@ func processVolume(volumeName string, client *master.MasterClient) (err error) {
 			Volume: volumeName,
 			Policy: []string{proto.BuiltinPermissionWritable.String()},
 		}); err != nil {
-			log.Printf("Process: setup shadow user permission fail: volume(%v) owner(%v) shadow(%v) err(%v)",
+			log.Printf("[ERROR] Process: setup shadow user permission fail: volume(%v) owner(%v) shadow(%v) err(%v)",
 				volumeName, owner, shadowUser, err)
 			return
 		}
@@ -261,15 +288,19 @@ func validateVolume(volumeName string, client *master.MasterClient) (err error) 
 	if volumeView, err = client.ClientAPI().GetVolumeWithoutAuthKey(volumeName); err != nil {
 		return
 	}
+	var simpleInfo *proto.SimpleVolView
+	if simpleInfo, err = client.AdminAPI().GetVolumeSimpleInfo(volumeName); err != nil {
+		return
+	}
 	var userInfo *proto.UserInfo
 	if userInfo, err = client.UserAPI().GetUserInfo(volumeView.Owner); err != nil {
-		log.Printf("Verify: get user info fail: volume(%v) owner(%v) err(%v)",
+		log.Printf("[ERROR] Verify: get user info fail: volume(%v) owner(%v) err(%v)",
 			volumeName, volumeView.Owner, err)
 		return
 	}
 	if !userInfo.Policy.IsOwn(volumeName) {
 		err = fmt.Errorf("owner mismatch")
-		log.Printf("Verify: check owner mismatch: volume(%v) expect(%v) actual(%v) raw(%v)", volumeName, userInfo.UserID, volumeView.Owner, userInfo.Policy.OwnVols)
+		log.Printf("[ERROR] Verify: check owner mismatch: volume(%v) expect(%v) actual(%v) raw(%v)", volumeName, userInfo.UserID, volumeView.Owner, userInfo.Policy.OwnVols)
 		return
 	}
 	if !isSpecialVolume(volumeView.Name) {
@@ -282,24 +313,28 @@ func validateVolume(volumeName string, client *master.MasterClient) (err error) 
 	if userInfo.AccessKey == volumeView.OSSSecure.AccessKey && userInfo.SecretKey == volumeView.OSSSecure.SecretKey {
 		return
 	}
-	var shadowUser string
-	if len(volumeView.Name) > 8 {
-		shadowUser = volumeView.Owner + "_" + volumeView.Name[:8]
-	} else {
-		shadowUser = volumeView.Owner + "_" + volumeView.Name
-	}
+	var shadowUser = shadowUserID(simpleInfo.ID, simpleInfo.Owner)
 	shadowUser = strings.Trim(shadowUser, "_")
 	if userInfo, err = client.UserAPI().GetUserInfo(shadowUser); err != nil {
-		log.Printf("Verify: get shadow user fail: volume(%v) shadow(%v) err(%v)", volumeName, shadowUser, err)
+		log.Printf("[ERROR] Verify: get shadow user fail: volume(%v) shadow(%v) err(%v)", volumeName, shadowUser, err)
 		return
 	}
 	for _, action := range proto.BuiltinPermissionActions(proto.BuiltinPermissionWritable) {
 		if !userInfo.Policy.IsAuthorized(volumeView.Name, action) {
 			err = fmt.Errorf("permission mismatch")
+			log.Printf("[ERROR] Verify: shadow user permiss mismatch: volume(%v) shadow(%v) err(%v)", volumeName, shadowUser, err)
 			return
 		}
 	}
 	return
+}
+
+func shadowUserID(volumeID uint64, owner string) string {
+	suffix := fmt.Sprintf("_vol%v", volumeID)
+	if len(owner)+len(suffix) > 21 {
+		owner = owner[:21-len(suffix)]
+	}
+	return fmt.Sprintf("%v_vol%v", owner, volumeID)
 }
 
 func statusFail() {
