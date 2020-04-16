@@ -813,38 +813,59 @@ func (v *volume) applyInodeToExistDentry(parentID uint64, name string, inode uin
 		return
 	}
 
-	defer func() {
-		if err != nil {
-			// rollback dentry update
-			if _, updateErr := v.mw.DentryUpdate_ll(parentID, name, oldInode); updateErr != nil {
-				log.LogErrorf("CompleteMultipart: meta rollback dentry update fail: parentID(%v) name(%v) inode(%v) err(%v)",
-					parentID, name, oldInode, updateErr)
-			}
-		}
-	}()
+	// Disable unnecessary rollback process
+	// defer func() {
+	//  	if err != nil {
+	//	 	// rollback dentry update
+	//	 	if _, updateErr := v.mw.DentryUpdate_ll(parentID, name, oldInode); updateErr != nil {
+	//	 		log.LogErrorf("CompleteMultipart: meta rollback dentry update fail: parentID(%v) name(%v) inode(%v) err(%v)",
+	//	 			parentID, name, oldInode, updateErr)
+	//	 	}
+	//	 }
+	// }()
 
 	// unlink and evict old inode
-	if _, err = v.mw.InodeUnlink_ll(oldInode); err != nil {
+	if _, err = v.mw.InodeUnlink_ll(oldInode); err != nil && err != syscall.ENOENT {
 		log.LogErrorf("CompleteMultipart: meta unlink old inode fail: inode(%v) err(%v)",
 			oldInode, err)
 		return
 	}
-
-	defer func() {
-		if err != nil {
-			// rollback unlink
-			if _, linkErr := v.mw.InodeLink_ll(oldInode); linkErr != nil {
-				log.LogErrorf("CompleteMultipart: meta rollback inode unlink fail: inode(%v) err(%v)",
-					oldInode, linkErr)
-			}
-		}
-	}()
-
-	if err = v.mw.Evict(oldInode); err != nil {
-		log.LogErrorf("CompleteMultipart: meta evict old inode fail: inode(%v) err(%v)",
-			oldInode, err)
-		return
+	if err == syscall.ENOENT {
+		err = nil
 	}
+
+	// Disable unnecessary rollback process
+	// defer func() {
+	//	 if err != nil {
+	//		 // rollback unlink
+	//		 if _, linkErr := v.mw.InodeLink_ll(oldInode); linkErr != nil {
+	//		 	 log.LogErrorf("CompleteMultipart: meta rollback inode unlink fail: inode(%v) err(%v)",
+	//				 oldInode, linkErr)
+	//		 }
+	//	 }
+	// }()
+
+	// When using the object storage interface to write data to ChubaoFS,
+	// in order to ensure the consistency of semantics and object storage,
+	// only if all data is written successfully will affect the existing data,
+	// ChubaoFS will carry out a series of complex metadata operation logic.
+	// During the operation of overwriting the existing file, the file data
+	// will be written to a brand new Inode, forming an invisible temporary
+	// data. When the data is completely written successfully, the new data
+	// will be effective by updating the existing Dentry, Otherwise, temporary
+	// data will be deleted to avoid wasting space.
+	// In the operation of updating the existing Dentry, the operation is
+	// successful but the operation initiating node thinks that the operation
+	// failed due to the timeout of the response.
+	// In this case, the file has Dentry but no Inode. The file can be indexed,
+	// but its data cannot be read or written.
+	// So temporarily disable the Evict command to track this problem.
+
+	// if err = v.mw.Evict(oldInode); err != nil {
+	//	 log.LogErrorf("CompleteMultipart: meta evict old inode fail: inode(%v) err(%v)",
+	//		 oldInode, err)
+	//	 return
+	// }
 	return
 }
 
