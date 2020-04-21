@@ -209,10 +209,10 @@ func processVolume(volumeName string, client *master.MasterClient) (err error) {
 	if volView, err = client.ClientAPI().GetVolumeWithoutAuthKey(volumeName); err != nil {
 		return
 	}
-	var simpleInfo *proto.SimpleVolView
-	if simpleInfo, err = client.AdminAPI().GetVolumeSimpleInfo(volumeName); err != nil {
-		return
-	}
+	//var simpleInfo *proto.SimpleVolView
+	//if simpleInfo, err = client.AdminAPI().GetVolumeSimpleInfo(volumeName); err != nil {
+	//	return
+	//}
 	owner := volView.Owner
 	ossSecure := volView.OSSSecure
 
@@ -251,35 +251,35 @@ func processVolume(volumeName string, client *master.MasterClient) (err error) {
 			volumeName, owner)
 	}
 
-	if ossSecure.AccessKey != userInfo.AccessKey {
-		// Create a shadow user and authorize it.
+	//if ossSecure.AccessKey != userInfo.AccessKey {
+	//	// Create a shadow user and authorize it.
+	//
+	//	shadowUser := shadowUserID(simpleInfo.ID, simpleInfo.Owner)
+	//	log.Printf("[INFO] Process: shadow user: volume(%v) owner(%v) shadow(%v)", volumeName, owner, shadowUser)
+	//	_, err = client.UserAPI().CreateUser(&proto.UserCreateParam{
+	//		ID:        shadowUser,
+	//		AccessKey: ossSecure.AccessKey,
+	//		SecretKey: ossSecure.SecretKey,
+	//		Type:      proto.UserTypeNormal,
+	//	})
+	//	if err == proto.ErrDuplicateUserID {
+	//		err = nil
+	//	}
+	//	if err != nil {
+	//		return
+	//	}
+	//
+	//	if _, err = client.UserAPI().UpdatePolicy(&proto.UserPermUpdateParam{
+	//		UserID: shadowUser,
+	//		Volume: volumeName,
+	//		Policy: []string{proto.BuiltinPermissionWritable.String()},
+	//	}); err != nil {
+	//		log.Printf("[ERROR] Process: setup shadow user permission fail: volume(%v) owner(%v) shadow(%v) err(%v)",
+	//			volumeName, owner, shadowUser, err)
+	//		return
+	//	}
 
-		shadowUser := shadowUserID(simpleInfo.ID, simpleInfo.Owner)
-		log.Printf("[INFO] Process: shadow user: volume(%v) owner(%v) shadow(%v)", volumeName, owner, shadowUser)
-		_, err = client.UserAPI().CreateUser(&proto.UserCreateParam{
-			ID:        shadowUser,
-			AccessKey: ossSecure.AccessKey,
-			SecretKey: ossSecure.SecretKey,
-			Type:      proto.UserTypeNormal,
-		})
-		if err == proto.ErrDuplicateUserID {
-			err = nil
-		}
-		if err != nil {
-			return
-		}
-
-		if _, err = client.UserAPI().UpdatePolicy(&proto.UserPermUpdateParam{
-			UserID: shadowUser,
-			Volume: volumeName,
-			Policy: []string{proto.BuiltinPermissionWritable.String()},
-		}); err != nil {
-			log.Printf("[ERROR] Process: setup shadow user permission fail: volume(%v) owner(%v) shadow(%v) err(%v)",
-				volumeName, owner, shadowUser, err)
-			return
-		}
-
-	}
+	//}
 	return
 }
 
@@ -288,10 +288,10 @@ func validateVolume(volumeName string, client *master.MasterClient) (err error) 
 	if volumeView, err = client.ClientAPI().GetVolumeWithoutAuthKey(volumeName); err != nil {
 		return
 	}
-	var simpleInfo *proto.SimpleVolView
-	if simpleInfo, err = client.AdminAPI().GetVolumeSimpleInfo(volumeName); err != nil {
-		return
-	}
+	//var simpleInfo *proto.SimpleVolView
+	//if simpleInfo, err = client.AdminAPI().GetVolumeSimpleInfo(volumeName); err != nil {
+	//	return
+	//}
 	var userInfo *proto.UserInfo
 	if userInfo, err = client.UserAPI().GetUserInfo(volumeView.Owner); err != nil {
 		log.Printf("[ERROR] Verify: get user info fail: volume(%v) owner(%v) err(%v)",
@@ -307,25 +307,25 @@ func validateVolume(volumeName string, client *master.MasterClient) (err error) 
 		return
 	}
 
-	if volumeView.OSSSecure == nil {
-		return
-	}
-	if userInfo.AccessKey == volumeView.OSSSecure.AccessKey && userInfo.SecretKey == volumeView.OSSSecure.SecretKey {
-		return
-	}
-	var shadowUser = shadowUserID(simpleInfo.ID, simpleInfo.Owner)
-	shadowUser = strings.Trim(shadowUser, "_")
-	if userInfo, err = client.UserAPI().GetUserInfo(shadowUser); err != nil {
-		log.Printf("[ERROR] Verify: get shadow user fail: volume(%v) shadow(%v) err(%v)", volumeName, shadowUser, err)
-		return
-	}
-	for _, action := range proto.BuiltinPermissionActions(proto.BuiltinPermissionWritable) {
-		if !userInfo.Policy.IsAuthorized(volumeView.Name, action) {
-			err = fmt.Errorf("permission mismatch")
-			log.Printf("[ERROR] Verify: shadow user permiss mismatch: volume(%v) shadow(%v) err(%v)", volumeName, shadowUser, err)
-			return
-		}
-	}
+	//if volumeView.OSSSecure == nil {
+	//	return
+	//}
+	//if userInfo.AccessKey == volumeView.OSSSecure.AccessKey && userInfo.SecretKey == volumeView.OSSSecure.SecretKey {
+	//	return
+	//}
+	//var shadowUser = shadowUserID(simpleInfo.ID, simpleInfo.Owner)
+	//shadowUser = strings.Trim(shadowUser, "_")
+	//if userInfo, err = client.UserAPI().GetUserInfo(shadowUser); err != nil {
+	//	log.Printf("[ERROR] Verify: get shadow user fail: volume(%v) shadow(%v) err(%v)", volumeName, shadowUser, err)
+	//	return
+	//}
+	//for _, action := range proto.BuiltinPermissionActions(proto.BuiltinPermissionWritable) {
+	//	if !userInfo.Policy.IsAuthorized(volumeView.Name, action) {
+	//		err = fmt.Errorf("permission mismatch")
+	//		log.Printf("[ERROR] Verify: shadow user permiss mismatch: volume(%v) shadow(%v) err(%v)", volumeName, shadowUser, err)
+	//		return
+	//	}
+	//}
 	return
 }
 
