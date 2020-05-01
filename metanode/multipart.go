@@ -17,10 +17,11 @@ package metanode
 import (
 	"bytes"
 	"encoding/binary"
-	"github.com/chubaofs/chubaofs/util/btree"
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/chubaofs/chubaofs/util/btree"
 )
 
 // Part defined necessary fields for multipart part management.
@@ -219,6 +220,8 @@ type Multipart struct {
 	key      string
 	initTime time.Time
 	parts    Parts
+	mime     string            // MIME
+	metadata map[string]string // Custom metadata
 
 	mu sync.RWMutex
 }
@@ -309,29 +312,59 @@ func MultipartFromBytes(raw []byte) *Multipart {
 		return string(data[n : n+int(lengthU64)]), n + int(lengthU64)
 	}
 	var offset, n int
-	// decode id
+
+	// Decode ID
 	var id string
 	id, n = unmarshalStr(raw)
 	offset += n
-	// decode key
+
+	// Decode key
 	var key string
 	key, n = unmarshalStr(raw[offset:])
 	offset += n
-	// decode init time
+
+	// Decode init time
 	var initTimeI64 int64
 	initTimeI64, n = binary.Varint(raw[offset:])
 	offset += n
-	// decode parts
+
+	// Decode parts
 	var partsLengthU64 uint64
 	partsLengthU64, n = binary.Uvarint(raw[offset:])
 	offset += n
 	var parts = PartsFromBytes(raw[offset : offset+int(partsLengthU64)])
+	offset += int(partsLengthU64)
+
+	// Decode mime type (Available >= v2.0.1)
+	var mime string
+	if offset > len(raw)-1 {
+		var mimeLengthU64 uint64
+		mimeLengthU64, n = binary.Uvarint(raw[offset:])
+		offset += n
+		mime = string(raw[offset : offset+int(mimeLengthU64)])
+		offset += int(mimeLengthU64)
+	}
+
+	// Decode metadata (Available >= v2.0.1)
+	// Structure:
+	// Len (Uvarint): number of bytes of metadata
+	// Num (Uvarint): number of key-value pair of metadata
+	// KeyLen: (Uvarint): number of bytes of key
+	// Key (KeyLen): key content
+	// ValLen: (Uvarint): number of byres of value
+	// Val (ValLen): value content
+	if offset > len(raw)-1 {
+		var metadataLen uint64
+		metadataLen, n = binary.Uvarint(raw[offset:])
+		offset += int(metadataLen)
+	}
 
 	var muSession = &Multipart{
 		id:       id,
 		key:      key,
 		initTime: time.Unix(0, initTimeI64),
 		parts:    parts,
+		mime:     mime,
 	}
 	return muSession
 }
