@@ -17,8 +17,9 @@ package authnode
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/chubaofs/chubaofs/util"
 	"time"
+
+	"github.com/chubaofs/chubaofs/util"
 
 	"github.com/chubaofs/chubaofs/proto"
 	"github.com/chubaofs/chubaofs/raftstore"
@@ -58,7 +59,6 @@ func newCluster(name string, leaderInfo *LeaderInfo, fsm *KeystoreFsm, partition
 	c.fsm = fsm
 	c.partition = partition
 	c.fsm.keystore = make(map[string]*keystore.KeyInfo, 0)
-	c.fsm.accessKeystore = make(map[string]*keystore.AccessKeyInfo, 0)
 	return
 }
 
@@ -111,7 +111,6 @@ func (c *Cluster) CreateNewKey(id string, keyInfo *keystore.KeyInfo) (res *keyst
 	}
 	res = keyInfo
 	c.fsm.PutKey(keyInfo)
-	c.fsm.PutAKInfo(accessKeyInfo)
 	return
 errHandler:
 	err = fmt.Errorf("action[CreateNewKey], clusterID[%v] ID:%v, err:%v ", c.Name, keyInfo, err.Error())
@@ -137,7 +136,6 @@ func (c *Cluster) DeleteKey(id string) (res *keystore.KeyInfo, err error) {
 		goto errHandler
 	}
 	c.fsm.DeleteKey(id)
-	c.fsm.DeleteAKInfo(akInfo.AccessKey)
 	return
 errHandler:
 	err = fmt.Errorf("action[DeleteKey], clusterID[%v] ID:%v, err:%v ", c.Name, id, err.Error())
@@ -154,19 +152,6 @@ func (c *Cluster) GetKey(id string) (res *keystore.KeyInfo, err error) {
 	return
 errHandler:
 	err = fmt.Errorf("action[GetKey], clusterID[%v] ID:%v, err:%v ", c.Name, id, err.Error())
-	log.LogError(errors.Stack(err))
-	return
-}
-
-// GetKey get a key from the AKstore
-func (c *Cluster) GetAKInfo(accessKey string) (akInfo *keystore.AccessKeyInfo, err error) {
-	if akInfo, err = c.fsm.GetAKInfo(accessKey); err != nil {
-		err = proto.ErrAccessKeyNotExists
-		goto errHandler
-	}
-	return
-errHandler:
-	err = fmt.Errorf("action[GetAKInfo], clusterID[%v] ID:%v, err:%v ", c.Name, accessKey, err.Error())
 	log.LogError(errors.Stack(err))
 	return
 }

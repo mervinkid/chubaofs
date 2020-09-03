@@ -40,9 +40,6 @@ func (m *Server) handleLeaderChange(leader uint64) {
 		if err := m.cluster.loadKeystore(); err != nil {
 			panic(err)
 		}
-		if err := m.cluster.loadAKstore(); err != nil {
-			panic(err)
-		}
 		m.metaReady = true
 	}
 }

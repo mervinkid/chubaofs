@@ -149,38 +149,6 @@ func (c *Cluster) clearKeystore() {
 	c.fsm.keystore = nil
 }
 
-func (c *Cluster) loadAKstore() (err error) {
-	aks := make(map[string]*keystore.AccessKeyInfo, 0)
-	log.LogInfof("action[loadAccessKeystore]")
-	result, err := c.fsm.store.SeekForPrefix([]byte(akPrefix))
-	if err != nil {
-		err = fmt.Errorf("action[loadAccessKeystore], err: %v", err.Error())
-		return err
-	}
-	for _, value := range result {
-		ak := &keystore.AccessKeyInfo{}
-		if err = json.Unmarshal(value, ak); err != nil {
-			err = fmt.Errorf("action[loadAccessKeystore], value: %v, unmarshal err: %v", string(value), err)
-			return err
-		}
-		if _, ok := aks[ak.AccessKey]; !ok {
-			aks[ak.AccessKey] = ak
-		}
-		log.LogInfof("action[loadAccessKeystore], access key[%v]", ak)
-	}
-	c.fsm.aksMutex.Lock()
-	defer c.fsm.aksMutex.Unlock()
-	c.fsm.accessKeystore = aks
-
-	return
-}
-
-func (c *Cluster) clearAKstore() {
-	c.fsm.aksMutex.Lock()
-	defer c.fsm.aksMutex.Unlock()
-	c.fsm.accessKeystore = nil
-}
-
 func (c *Cluster) addRaftNode(nodeID uint64, addr string) (err error) {
 	peer := proto.Peer{ID: nodeID}
 	_, err = c.partition.ChangeMember(proto.ConfAddNode, peer, []byte(addr))

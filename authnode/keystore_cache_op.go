@@ -32,28 +32,3 @@ func (mf *KeystoreFsm) DeleteKey(id string) {
 	delete(mf.keystore, id)
 	return
 }
-
-func (mf *KeystoreFsm) PutAKInfo(akInfo *keystore.AccessKeyInfo) {
-	mf.aksMutex.Lock()
-	defer mf.aksMutex.Unlock()
-	if _, ok := (mf.accessKeystore)[akInfo.AccessKey]; !ok {
-		(mf.accessKeystore)[akInfo.AccessKey] = akInfo
-	}
-}
-
-func (mf *KeystoreFsm) GetAKInfo(accessKey string) (akInfo *keystore.AccessKeyInfo, err error) {
-	mf.aksMutex.RLock()
-	defer mf.aksMutex.RUnlock()
-	akInfo, ok := (mf.accessKeystore)[accessKey]
-	if !ok {
-		err = proto.ErrAccessKeyNotExists
-	}
-	return
-}
-
-func (mf *KeystoreFsm) DeleteAKInfo(accessKey string) {
-	mf.aksMutex.Lock()
-	defer mf.aksMutex.Unlock()
-	delete(mf.accessKeystore, accessKey)
-	return
-}

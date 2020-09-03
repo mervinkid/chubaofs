@@ -66,11 +66,6 @@ const (
 	//raft node APIs
 	AdminAddRaftNode    = "/admin/addraftnode"
 	AdminRemoveRaftNode = "/admin/removeraftnode"
-
-	// Object node APIs
-	OSAddCaps    = "/os/addcaps"
-	OSDeleteCaps = "/os/deletecaps"
-	OSGetCaps    = "/os/getcaps"
 )
 
 const (

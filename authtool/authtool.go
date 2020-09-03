@@ -28,9 +28,6 @@ const (
 	DeleteCaps     = "deletecaps"
 	AddRaftNode    = "addraftnode"
 	RemoveRaftNode = "removeraftnode"
-	OSAddCaps      = "osaddcaps"
-	OSDeleteCaps   = "osdeletecaps"
-	OSGetCaps      = "osgetcaps"
 	HTTP           = "http://"
 	HTTPS          = "https://"
 )
@@ -53,9 +50,6 @@ var action2PathMap = map[string]string{
 	DeleteCaps:     proto.AdminDeleteCaps,
 	AddRaftNode:    proto.AdminAddRaftNode,
 	RemoveRaftNode: proto.AdminRemoveRaftNode,
-	OSAddCaps:      proto.OSAddCaps,
-	OSDeleteCaps:   proto.OSDeleteCaps,
-	OSGetCaps:      proto.OSGetCaps,
 }
 
 var (
@@ -237,12 +231,6 @@ func accessAuthServer() {
 		msg = proto.MsgAuthAddRaftNodeReq
 	case RemoveRaftNode:
 		msg = proto.MsgAuthRemoveRaftNodeReq
-	case OSAddCaps:
-		msg = proto.MsgAuthOSAddCapsReq
-	case OSDeleteCaps:
-		msg = proto.MsgAuthOSDeleteCapsReq
-	case OSGetCaps:
-		msg = proto.MsgAuthOSGetCapsReq
 	default:
 		panic(fmt.Errorf("wrong requst [%s]", flaginfo.api.request))
 	}
@@ -311,23 +299,6 @@ func accessAuthServer() {
 				Addr: dataCFG.GetString("addr"),
 			},
 		}
-	case OSAddCaps:
-		fallthrough
-	case OSDeleteCaps:
-		message = proto.AuthOSAccessKeyReq{
-			APIReq: *apiReq,
-			AKCaps: keystore.AccessKeyCaps{
-				AccessKey: dataCFG.GetString(AccessKey),
-				Caps:      []byte(dataCFG.GetString(Caps)),
-			},
-		}
-	case OSGetCaps:
-		message = proto.AuthOSAccessKeyReq{
-			APIReq: *apiReq,
-			AKCaps: keystore.AccessKeyCaps{
-				AccessKey: dataCFG.GetString(AccessKey),
-			},
-		}
 	default:
 		panic(fmt.Errorf("wrong action [%s]", flaginfo.api.request))
 	}
@@ -389,22 +360,6 @@ func accessAuthServer() {
 		}
 
 		fmt.Printf(resp.Msg + "\n")
-	case OSAddCaps:
-		fallthrough
-	case OSDeleteCaps:
-		fallthrough
-	case OSGetCaps:
-		var resp proto.AuthOSAccessKeyResp
-		if resp, err = proto.ParseAuthOSAKResp(body, sessionKey); err != nil {
-			panic(err)
-		}
-		if err = proto.VerifyAPIRespComm(&resp.APIResp, msg, ticketCFG.GetString(ID), proto.AuthServiceID, ts); err != nil {
-			panic(err)
-		}
-		if res, err = resp.AKCaps.DumpJSONStr(); err != nil {
-			panic(err)
-		}
-		fmt.Printf(res + "\n")
 	}
 
 	return

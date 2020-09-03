@@ -51,12 +51,10 @@ type KeystoreFsm struct {
 	peerChangeHandler   raftPeerChangeHandler
 	snapshotHandler     raftApplySnapshotHandler
 
-	keystore       map[string]*keystore.KeyInfo
-	accessKeystore map[string]*keystore.AccessKeyInfo
-	ksMutex        sync.RWMutex // keystore mutex
-	aksMutex       sync.RWMutex //accesskeystore mutex
-	opKeyMutex     sync.RWMutex // operations on key mutex
-	id             uint64       // current id of server
+	keystore   map[string]*keystore.KeyInfo
+	ksMutex    sync.RWMutex // keystore mutex
+	opKeyMutex sync.RWMutex // operations on key mutex
+	id         uint64       // current id of server
 }
 
 func newKeystoreFsm(store *raftstore.RocksDBStore, retainsLog uint64, rs *raft.RaftServer) (fsm *KeystoreFsm) {
@@ -147,7 +145,6 @@ func (mf *KeystoreFsm) Apply(command []byte, index uint64) (resp interface{}, er
 		// statement: "id" indicates which server has changed keystore cache (typical leader).
 		if mf.id != leader {
 			mf.DeleteKey(keyInfo.ID)
-			mf.DeleteAKInfo(keyInfo.AccessKey)
 			log.LogInfof("action[Apply], Successfully delete key in node[%d]", mf.id)
 		} else {
 			log.LogInfof("action[Apply], Already delete key in node[%d]", mf.id)
@@ -160,11 +157,6 @@ func (mf *KeystoreFsm) Apply(command []byte, index uint64) (resp interface{}, er
 		// Same reasons as the description above
 		if mf.id != leader {
 			mf.PutKey(&keyInfo)
-			accessKeyInfo := &keystore.AccessKeyInfo{
-				AccessKey: keyInfo.AccessKey,
-				ID:        keyInfo.ID,
-			}
-			mf.PutAKInfo(accessKeyInfo)
 			log.LogInfof("action[Apply], Successfully put key in node[%d]", mf.id)
 		} else {
 			log.LogInfof("action[Apply], Already put key in node[%d]", mf.id)
