@@ -16,15 +16,17 @@ package datanode
 
 import (
 	"fmt"
+	"path"
 	"sync"
 	"time"
+
+	"math"
+	"os"
 
 	"github.com/chubaofs/chubaofs/proto"
 	"github.com/chubaofs/chubaofs/raftstore"
 	"github.com/chubaofs/chubaofs/util"
 	"github.com/chubaofs/chubaofs/util/log"
-	"math"
-	"os"
 )
 
 // SpaceManager manages the disk space.
@@ -287,6 +289,8 @@ func (manager *SpaceManager) CreatePartition(request *proto.CreateDataPartitionR
 }
 
 // DeletePartition deletes a partition based on the partition id.
+// When the operation of deleting datapartition is performed, the data is not deleted immediately,
+// but the data is retained and the data directory of the datapartition is marked and renamed.
 func (manager *SpaceManager) DeletePartition(dpID uint64) {
 	dp := manager.Partition(dpID)
 	if dp == nil {
@@ -297,7 +301,31 @@ func (manager *SpaceManager) DeletePartition(dpID uint64) {
 	manager.partitionMutex.Unlock()
 	dp.Stop()
 	dp.Disk().DetachDataPartition(dp)
-	os.RemoveAll(dp.Path())
+	var currentPath = path.Clean(dp.Path())
+	// Rename (move) marked deleted partition from '{DIR}/{BASE}' to '{DIR}/deleted_{BASE}_{TIME_STAMP}'
+	// Example:
+	//   current path: /disk0/datapartition_1_128849018880
+	//   new path: /disk0/deleted_datapartition_1_128849018880_1600054521
+	var newPath = path.Join(
+		path.Dir(currentPath),
+		DeletedPartitionPrefix+
+			fmt.Sprintf("%s_%d",
+				path.Base(currentPath),
+				time.Now().Unix()))
+	if err := os.Rename(currentPath, newPath); err != nil {
+		log.LogErrorf("DeletePartition: move deleted partition fail: volume(%v) partitionID(%v) path(%v) newPath(%v) err(%v)",
+			dp.volumeID,
+			dp.partitionID,
+			dp.path,
+			newPath,
+			err)
+		return
+	}
+	log.LogInfof("DeletePartition: move deleted partition: volume(%v) partitionID(%v) path(%v) newPath(%v)",
+		dp.volumeID,
+		dp.partitionID,
+		dp.path,
+		newPath)
 }
 
 func (s *DataNode) buildHeartBeatResponse(response *proto.DataNodeHeartbeatResponse) {
